@@ -1,0 +1,20 @@
+{
+  "model": "typesafe/jev-1.13",
+  "state": {
+    "from": "shipping@example.com",
+    "subject": "Your order is on its way",
+    "snippet": "Good news! Your parcel has left our warehouse. Track your delivery with the link below."
+  },
+  "questions": {
+    "category": {
+      "type": "choice",
+      "instructions": "Classify this email received in a personal Gmail inbox into exactly one category. Decide by what the email is about and why it was sent, not only by who sent it.",
+      "criteria": {
+        "Shopping & Deliveries": "Shopping, food delivery and marketplaces: orders, purchase receipts, shipment tracking, courier and postal services",
+        "Promotions": "Marketing from ANY company: discounts, campaigns, newsletters, product updates and feature announcements",
+        "Subscriptions & Services": "Transactional messages about the user's own subscriptions and service accounts: receipts, renewals, plan changes. Not newsletters or product updates.",
+        "Other": "Personal or miscellaneous emails that do not clearly fit any category"
+      }
+    }
+  }
+}

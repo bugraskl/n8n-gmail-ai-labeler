@@ -1,0 +1,386 @@
+{
+  "name": "Gmail AI Labeler (Jev)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */1 * * *"
+            }
+          ]
+        }
+      },
+      "id": "808b2c46-e3ad-4f65-ab45-4a3a51072c98",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"processed_label\": \"ai-labeled\",\n  \"label_prefix\": \"\",\n  \"create_missing_labels\": true,\n  \"gmail_query\": \"newer_than:2d -category:promotions -category:social\",\n  \"max_emails_per_run\": 20,\n  \"engine\": \"jev\",\n  \"jev_model\": \"typesafe/jev-1.13\",\n  \"llm_model\": \"google/gemini-2.5-flash\",\n  \"instructions\": \"Classify this email received in a personal Gmail inbox into exactly one category. Decide by what the email is about and why it was sent, not only by who sent it.\",\n  \"rules\": [\n    {\n      \"field\": \"from\",\n      \"contains\": \"you@example.com\",\n      \"category\": \"Automation\"\n    },\n    {\n      \"field\": \"from\",\n      \"contains\": \"@yourcompany.example.com\",\n      \"category\": \"Work\"\n    },\n    {\n      \"field\": \"text\",\n      \"regex\": \"\\\\b(YourCompany|Your Client Ltd)\\\\b\",\n      \"category\": \"Work\"\n    }\n  ],\n  \"categories\": [\n    {\n      \"name\": \"Automation\",\n      \"criteria\": \"The user's own automated notifications: n8n workflows, scripts, cron jobs, servers and monitoring alerts, usually sent from the user's own address\"\n    },\n    {\n      \"name\": \"Work\",\n      \"criteria\": \"Work: the user's employer, customers, colleagues, freelance clients, and performance or indexing reports for businesses and websites the user manages (e.g. Google Business Profile performance reports, Search Console)\"\n    },\n    {\n      \"name\": \"Bills\",\n      \"criteria\": \"Utility and telecom bills only: electricity, water, natural gas, internet, mobile or landline phone. Invoices for purchases or food orders are NOT here.\"\n    },\n    {\n      \"name\": \"Banking\",\n      \"criteria\": \"Banks, payments and pensions: statements, card statements, transfers, card transactions, account notices from banks, PayPal, private pension and insurance payment documents\"\n    },\n    {\n      \"name\": \"Shopping & Deliveries\",\n      \"criteria\": \"Shopping, food delivery and marketplaces: orders, purchase receipts and e-invoices from shops or delivery apps (e.g. Amazon, eBay, food-delivery apps), shipment tracking, second-hand listings, sales, favourite-listing alerts and buyer questions on marketplaces, courier and postal services (e.g. UPS, DHL, FedEx, national post)\"\n    },\n    {\n      \"name\": \"Social\",\n      \"criteria\": \"Social networks: all LinkedIn emails (including job alerts and Premium offers), Instagram, Facebook, X/Twitter, TikTok, and interactions on the user's Google Maps reviews\"\n    },\n    {\n      \"name\": \"Promotions\",\n      \"criteria\": \"Marketing from ANY company: discounts, campaigns, newsletters, monthly/weekly digests, product updates, \\\"what's new\\\" and feature announcements, conference or event marketing, birthday greetings from brands, messages marked as advertising\"\n    },\n    {\n      \"name\": \"Subscriptions & Services\",\n      \"criteria\": \"Transactional messages about the user's own subscriptions and service accounts: receipts, renewals, payment confirmations, plan or account changes, terms/policy updates, membership sign-ups (Netflix, Spotify, YouTube, Apple, Google Play, Adobe, GitHub, AWS, Cloudflare, Supabase, OpenAI). Not newsletters or product updates.\"\n    },\n    {\n      \"name\": \"Security\",\n      \"criteria\": \"Security: 2FA/OTP codes, password resets, new sign-in alerts, account verification, app permission requests, leaked secret or security incident alerts (e.g. GitGuardian), suspicious activity\"\n    },\n    {\n      \"name\": \"Government\",\n      \"criteria\": \"Government, universities and official institutions: tax office, social security, e-government portals, university registration and student affairs, official notifications, traffic fines\"\n    },\n    {\n      \"name\": \"Travel\",\n      \"criteria\": \"Flights, hotel reservations, Booking.com, Airbnb, airlines, train or bus tickets, car rental\"\n    },\n    {\n      \"name\": \"Events & Tickets\",\n      \"criteria\": \"Event tickets the user bought or reserved: concerts, theatre, cinema, festivals, ticketing platforms\"\n    },\n    {\n      \"name\": \"Other\",\n      \"criteria\": \"Personal or miscellaneous emails that do not clearly fit any category (e.g. doctor appointments, thank-you notes)\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "d10e6523-8766-41e6-a631-ab8e1adc913a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "returnAll": true
+      },
+      "id": "442b3d0e-c321-4e3c-9154-497facee6cc2",
+      "name": "List Labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -120,
+        400
+      ],
+      "webhookId": "daaa0e94-04e2-41fa-8625-b6d49de6334f"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Makes sure every label this workflow may apply exists:\n// category labels, rule target labels and the \"processed\" marker label.\n// Outputs one item per missing label (parents of nested \"Parent/Child\" labels first),\n// or a single { create: false } item when nothing has to be created.\nconst cfg = $('Config').first().json;\nconst prefix = String(cfg.label_prefix || '');\nconst wanted = [];\nconst add = n => {\n  n = String(n || '').trim();\n  if (n && !wanted.some(w => w.toLowerCase() === n.toLowerCase())) wanted.push(n);\n};\nfor (const c of (Array.isArray(cfg.categories) ? cfg.categories : [])) {\n  const name = String((c && c.name) || '').trim();\n  if (name) add(prefix + name);\n}\nfor (const r of (Array.isArray(cfg.rules) ? cfg.rules : [])) {\n  const name = String((r && r.category) || '').trim();\n  if (name) add(prefix + name);\n}\nadd(cfg.processed_label);\n// Nested labels: make sure \"Parent\" exists before \"Parent/Child\"\nfor (const n of [...wanted]) {\n  const parts = n.split('/');\n  for (let i = 1; i < parts.length; i++) add(parts.slice(0, i).join('/'));\n}\n// Gmail label names are unique case-insensitively\nconst existing = new Set($input.all().map(i => String((i.json || {}).name || '').toLowerCase()).filter(Boolean));\nconst missing = cfg.create_missing_labels === false ? [] : wanted.filter(n => !existing.has(n.toLowerCase()));\nmissing.sort((a, b) => a.split('/').length - b.split('/').length);\nif (!missing.length) return [{ json: { create: false } }];\nreturn missing.map(name => ({ json: { create: true, name } }));\n"
+      },
+      "id": "fa013e3a-dc3e-47da-90d7-6d2b9bc57a77",
+      "name": "Find Missing Labels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d80e6b22-196e-4dd0-8b80-a460889f6fa3",
+              "leftValue": "={{ $json.create }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8008abd7-be34-491d-81d4-06a99b1023ac",
+      "name": "Any Missing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "={{ $json.name }}",
+        "options": {}
+      },
+      "id": "32177046-3f17-4d9b-a038-6be7575dadaf",
+      "name": "Create Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        540,
+        280
+      ],
+      "webhookId": "82c57b3b-da11-4b70-960f-0c13b92a967c",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": "={{ $('Config').first().json.max_emails_per_run }}",
+        "filters": {
+          "q": "={{ $('Config').first().json.gmail_query + ' -label:' + String($('Config').first().json.processed_label).trim().toLowerCase().replace(/[\\s\\/]+/g, '-') }}"
+        }
+      },
+      "id": "57ec91b1-90e2-4761-b613-27de687389f3",
+      "name": "Fetch New Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        760,
+        400
+      ],
+      "webhookId": "b82e550b-1694-45a9-a380-1262c5010b00",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// One classification request per email.\n// - Jev (default): a typed \"choice\" decision. The category names are fixed options, so the model\n//   cannot return an invented category or broken JSON.\n// - LLM (engine: \"llm\"): OpenRouter chat/completions with a JSON-schema enum answer.\n// Deterministic rules (Config.rules) are evaluated here and win over the model in \"Decide Labels\".\n// A model request is still built for every email so requests and responses stay aligned by index.\nconst cfg = $('Config').first().json;\nconst engine = String(cfg.engine || 'jev').toLowerCase();\nconst categories = Array.isArray(cfg.categories) ? cfg.categories : [];\nconst names = categories.map(c => String((c && c.name) || '').trim());\n\n// Config sanity checks: fail loudly instead of labeling mail wrongly\nif (!['jev', 'llm'].includes(engine)) throw new Error('Config.engine must be \"jev\" or \"llm\".');\nif (names.length < 2) throw new Error('Config.categories needs at least 2 entries like {\"name\": \"...\", \"criteria\": \"...\"}.');\nif (names.length > 255) throw new Error('Config.categories: a Jev \"choice\" question accepts at most 255 options.');\nif (names.some(n => !n)) throw new Error('Config.categories: every category needs a non-empty \"name\".');\nif (new Set(names.map(n => n.toLowerCase())).size !== names.length) throw new Error('Config.categories: names must be unique (case-insensitive).');\n\nconst criteria = {};\ncategories.forEach((c, i) => { criteria[names[i]] = String(c.criteria || names[i]).trim(); });\nconst QUESTION = { type: 'choice', instructions: String(cfg.instructions || ''), criteria };\n\n// Rules: { field: from | subject | snippet | text | any, contains: \"...\" or regex: \"...\", category: \"...\" }\n// \"from\" is the sender address only; \"text\" is subject + snippet; matching is case-insensitive; first match wins.\nconst FIELDS = ['from', 'subject', 'snippet', 'text', 'any'];\nconst RULES = (Array.isArray(cfg.rules) ? cfg.rules : []).map((r, i) => {\n  const field = String(r.field || 'from').toLowerCase();\n  if (!FIELDS.includes(field)) throw new Error(`Config.rules[${i}].field must be one of ${FIELDS.join(', ')}.`);\n  const category = String(r.category || '').trim();\n  if (!category) throw new Error(`Config.rules[${i}] needs a \"category\" (the label to apply).`);\n  let test;\n  if (r.regex) {\n    let rx;\n    try { rx = new RegExp(String(r.regex), 'i'); }\n    catch (e) { throw new Error(`Config.rules[${i}].regex is not a valid regular expression: ${e.message}`); }\n    test = s => rx.test(s);\n  } else if (r.contains) {\n    const needle = String(r.contains).toLowerCase();\n    test = s => s.toLowerCase().includes(needle);\n  } else {\n    throw new Error(`Config.rules[${i}] needs \"contains\" or \"regex\".`);\n  }\n  return { field, test, category };\n});\nfunction rule(m) {\n  const f = { from: m.fromAddr, subject: m.subject, snippet: m.snippet,\n    text: m.subject + ' ' + m.snippet, any: m.fromAddr + ' ' + m.subject + ' ' + m.snippet };\n  for (const r of RULES) if (r.test(f[r.field] || '')) return r.category;\n  return '';\n}\n\n// Plain-LLM fallback for people without access to the Jev endpoint\nconst LLM_SYSTEM = [\n  String(cfg.instructions || ''),\n  '',\n  'Categories (choose exactly one name):',\n  ...names.map(n => `- ${n}: ${criteria[n]}`),\n  '',\n  'Reply only with JSON: {\"category\": \"<one of the category names>\"}',\n].join('\\n');\nfunction llmBody(state) {\n  return {\n    model: cfg.llm_model,\n    temperature: 0,\n    messages: [\n      { role: 'system', content: LLM_SYSTEM },\n      { role: 'user', content: JSON.stringify(state) },\n    ],\n    response_format: {\n      type: 'json_schema',\n      json_schema: {\n        name: 'email_category',\n        strict: true,\n        schema: {\n          type: 'object',\n          properties: { category: { type: 'string', enum: names } },\n          required: ['category'],\n          additionalProperties: false,\n        },\n      },\n    },\n    // Only route to providers that support structured outputs\n    provider: { require_parameters: true },\n  };\n}\n\nfunction extractAddress(from) {\n  if (!from) return '';\n  if (typeof from === 'object') {\n    if (Array.isArray(from.value) && from.value[0] && from.value[0].address) return String(from.value[0].address).toLowerCase();\n    if (from.address) return String(from.address).toLowerCase();\n    if (from.text) from = from.text;\n  }\n  const s = String(from);\n  const m = s.match(/<([^>]+)>/);\n  return m ? m[1].toLowerCase() : s.toLowerCase().trim();\n}\nfunction stringifyVal(v) {\n  if (!v) return '';\n  if (typeof v === 'object') return v.text || v.value || JSON.stringify(v).substring(0, 200);\n  return String(v);\n}\n\nconst out = [];\nfor (const it of $input.all()) {\n  const e = it.json || {};\n  if (!e.id) continue;\n  const headers = (e.payload && Array.isArray(e.payload.headers)) ? e.payload.headers : [];\n  const getH = n => { const h = headers.find(x => (x.name || '').toLowerCase() === n.toLowerCase()); return h ? (h.value || '') : ''; };\n  const subject = stringifyVal(e.subject || e.Subject || getH('Subject')).substring(0, 150);\n  const fromRaw = e.from || e.From || getH('From') || '';\n  const fromAddr = extractAddress(fromRaw) || stringifyVal(fromRaw);\n  const snippet = stringifyVal(e.snippet || '').substring(0, 150);\n  const m = { id: e.id, fromAddr, subject, snippet };\n  const state = { from: fromAddr, subject, snippet };\n  const body = engine === 'llm'\n    ? llmBody(state)\n    : { model: cfg.jev_model || 'typesafe/jev-1.13', state, questions: { category: QUESTION } };\n  out.push({ json: { ...m, rule: rule(m), body } });\n}\nreturn out;\n"
+      },
+      "id": "0ae8ac74-c681-44b1-9c93-6021e32b61d0",
+      "name": "Build Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ String($('Config').first().json.engine || 'jev').toLowerCase() === 'llm' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://openrouter.ai/api/alpha/decisions' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 200
+            }
+          }
+        }
+      },
+      "id": "992ccf6b-9732-4360-9d1a-1b35acd36693",
+      "name": "Classify Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Pairs each request with its response (same order), resolves Gmail label IDs and decides what to apply.\n// If the model was unreachable (or gave no valid category) nothing is applied: the email does not get the\n// processed label, so the next run picks it up again.\nconst cfg = $('Config').first().json;\nconst engine = String(cfg.engine || 'jev').toLowerCase();\nconst prefix = String(cfg.label_prefix || '');\nconst names = (Array.isArray(cfg.categories) ? cfg.categories : []).map(c => String((c && c.name) || '').trim());\n\nconst labelIds = {};\nconst collect = items => {\n  for (const l of items) { const j = l.json || {}; if (j.name && j.id) labelIds[String(j.name).toLowerCase()] = j.id; }\n};\ncollect($('List Labels').all());\ntry { collect($('Create Label').all()); } catch (e) { /* Create Label did not run: nothing was missing */ }\nconst idFor = name => labelIds[String(name || '').trim().toLowerCase()] || null;\nconst DONE = idFor(cfg.processed_label);\n\nfunction modelAnswer(json) {\n  const none = { category: '', confidence: null, cost: null };\n  if (!json || json.error) return none;\n  const cost = (json.usage && typeof json.usage.cost === 'number') ? json.usage.cost : null;\n  if (engine === 'llm') {\n    const msg = json.choices && json.choices[0] && json.choices[0].message;\n    let category = '';\n    try {\n      const raw = String((msg && msg.content) || '').replace(/^\\s*```(?:json)?\\s*/i, '').replace(/\\s*```\\s*$/, '');\n      category = String(JSON.parse(raw).category || '').trim();\n    } catch (e) { category = ''; }\n    return { category: names.includes(category) ? category : '', confidence: null, cost };\n  }\n  const a = json.answers && json.answers.category;\n  const category = (a && typeof a.choice === 'string') ? a.choice : '';\n  return { category: names.includes(category) ? category : '',\n    confidence: (a && typeof a.confidence === 'number') ? a.confidence : null, cost };\n}\n\nconst reqs = $('Build Requests').all();\nconst res = $input.all();\nconst out = [];\nreqs.forEach((r, k) => {\n  const m = r.json;\n  const ans = modelAnswer(res[k] && res[k].json);\n  const category = m.rule || ans.category;\n  if (!category) return; // model unreachable / invalid answer -> retried next run\n  const label = prefix + category;\n  const catId = idFor(label);\n  if (!catId) return; // label missing (creation disabled or failed) -> retried once it exists\n  const ids = [catId];\n  if (DONE) ids.push(DONE);\n  out.push({ json: { email_id: m.id, category, label, source: m.rule ? 'rule' : engine,\n    confidence: m.rule ? 1 : ans.confidence, cost: ans.cost, from: m.fromAddr, subject: m.subject, labelIds: ids } });\n});\nreturn out;\n"
+      },
+      "id": "3b4d6055-baab-499e-aaed-295504c6f5ca",
+      "name": "Decide Labels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.email_id }}",
+        "labelIds": "={{ $json.labelIds }}"
+      },
+      "id": "de78f9ff-f70b-4740-9daf-76eb0132e7dd",
+      "name": "Apply Labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1640,
+        400
+      ],
+      "webhookId": "ce6e5a81-c2cb-4150-9d49-898fefc630d4",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "## Gmail AI Labeler\nEvery hour: new Gmail messages -> your rules -> **one typed decision per email** (Jev via OpenRouter) -> category label + processed marker.\n\n### Setup\n1. **Gmail OAuth2** credential on the 4 Gmail nodes.\n2. **Classify Email**: Header Auth credential, Name `Authorization`, Value `Bearer <your OpenRouter key>`.\n3. Edit **Config**: `categories`, `rules`, `processed_label`.\n4. Execute once by hand, check **Decide Labels** output, then activate.\n\nDocs: README.md in the repo.",
+        "height": 500,
+        "width": 460
+      },
+      "id": "4522e522-b4a4-4695-b7f4-8253a5743042",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Make sure the labels exist\nLists your Gmail labels and creates any missing category / rule / processed label (turn off with `create_missing_labels: false`). Parents of nested `Parent/Child` labels are created first.",
+        "height": 480,
+        "width": 860,
+        "color": 7
+      },
+      "id": "32ae15d2-db2e-4ed1-ba4c-114db96345aa",
+      "name": "Note: Labels",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Classify and label\nQuery = `gmail_query` + `-label:<processed_label>`, at most `max_emails_per_run` emails. Rules run first; everything else gets a Jev `choice` decision (or a JSON-schema LLM answer with `engine: \"llm\"`).\n**Model unreachable -> nothing is applied -> retried next hour.**",
+        "height": 480,
+        "width": 1080,
+        "color": 4
+      },
+      "id": "aa030411-a555-43da-bca0-2f3d4d9cd4ee",
+      "name": "Note: Classify",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Labels": {
+      "main": [
+        [
+          {
+            "node": "Find Missing Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Missing Labels": {
+      "main": [
+        [
+          {
+            "node": "Any Missing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Missing?": {
+      "main": [
+        [
+          {
+            "node": "Create Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch New Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Label": {
+      "main": [
+        [
+          {
+            "node": "Fetch New Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch New Emails": {
+      "main": [
+        [
+          {
+            "node": "Build Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Requests": {
+      "main": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Decide Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Labels": {
+      "main": [
+        [
+          {
+            "node": "Apply Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,67 @@
+{
+  "_about": "Example Config values for a small business (e.g. a local shop, cafe, salon or restaurant). Copy the keys below into the Config node, replacing the existing ones. Keys starting with _ are ignored.",
+  "instructions": "Classify this email received in the shared Gmail inbox of a small local business into exactly one category. Decide by what the email is about and why it was sent, not only by who sent it.",
+  "rules": [
+    {
+      "field": "from",
+      "contains": "orders@example.com",
+      "category": "Orders & Bookings"
+    },
+    {
+      "field": "subject",
+      "regex": "^(new order|new reservation|booking confirmed)\\b",
+      "category": "Orders & Bookings"
+    },
+    {
+      "field": "from",
+      "contains": "@your-supplier.example.com",
+      "category": "Suppliers"
+    }
+  ],
+  "categories": [
+    {
+      "name": "Customers",
+      "criteria": "Messages written by customers or guests: questions, complaints, compliments, special requests, catering or group enquiries, contact-form submissions"
+    },
+    {
+      "name": "Orders & Bookings",
+      "criteria": "Orders, reservations and appointments made by customers through the website, booking tools or delivery platforms, including changes and cancellations"
+    },
+    {
+      "name": "Reviews",
+      "criteria": "New reviews and ratings about the business (e.g. Google Business Profile, Tripadvisor, delivery-platform ratings) and replies to them. Performance reports are NOT here."
+    },
+    {
+      "name": "Suppliers",
+      "criteria": "Suppliers and wholesalers: quotes, order confirmations, delivery notes, supplier invoices, price lists and stock notices"
+    },
+    {
+      "name": "Bills",
+      "criteria": "Utility, telecom and rent bills for the premises only: electricity, water, gas, internet, phone, rent. Supplier invoices are NOT here."
+    },
+    {
+      "name": "Banking & Payouts",
+      "criteria": "Bank statements, card-terminal and payment-processor reports, payouts from delivery or booking platforms, transfers and chargebacks"
+    },
+    {
+      "name": "Staff",
+      "criteria": "Employees and candidates: job applications, shift or holiday requests, payroll and HR-provider messages"
+    },
+    {
+      "name": "Tax & Official",
+      "criteria": "Accountant, tax office, licences and permits, health and safety inspections, insurance and other official paperwork"
+    },
+    {
+      "name": "Platforms & Accounts",
+      "criteria": "Transactional messages about the business's own software accounts (POS, website, booking and delivery platforms): receipts, renewals, policy changes, performance reports, sign-in alerts and verification codes"
+    },
+    {
+      "name": "Marketing & Promotions",
+      "criteria": "Bulk mail sent to many people: newsletters, offers and discounts, product announcements, advertising and SEO sales pitches, trade-fair and event marketing"
+    },
+    {
+      "name": "Other",
+      "criteria": "Emails that do not clearly fit any other category"
+    }
+  ]
+}

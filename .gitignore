@@ -1,0 +1,16 @@
+# Secrets and local overrides
+.env
+.env.*
+*.local.json
+credentials*.json
+
+# Your own exported copies of the workflow (may contain credential IDs)
+workflows/*.export.json
+*.backup.json
+
+# Tooling
+node_modules/
+__pycache__/
+.DS_Store
+.idea/
+.vscode/

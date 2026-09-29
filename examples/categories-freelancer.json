@@ -1,0 +1,67 @@
+{
+  "_about": "Example Config values for a freelancer (developer / designer / consultant). Copy the keys below into the Config node, replacing the existing ones. Keys starting with _ are ignored.",
+  "instructions": "Classify this email received in the Gmail inbox of a freelance web developer into exactly one category. Decide by what the email is about and why it was sent, not only by who sent it.",
+  "rules": [
+    {
+      "field": "from",
+      "contains": "alerts@example.com",
+      "category": "Servers & Monitoring"
+    },
+    {
+      "field": "from",
+      "contains": "@client-one.example.com",
+      "category": "Clients"
+    },
+    {
+      "field": "text",
+      "regex": "\\b(Client One|Project Falcon)\\b",
+      "category": "Clients"
+    }
+  ],
+  "categories": [
+    {
+      "name": "Clients",
+      "criteria": "Messages from or about current clients and their projects: requests, feedback, approvals, meeting notes, shared files, and project-tool notifications (e.g. Jira, Trello, Figma comments) for client work"
+    },
+    {
+      "name": "Leads",
+      "criteria": "Possible new work from people who are not clients yet: contact-form submissions, quote requests, introductions, invitations and proposals on freelance platforms. Job-board newsletters are NOT here."
+    },
+    {
+      "name": "Invoices & Payments",
+      "criteria": "Money for the user's work: invoices the user issued, payment confirmations from clients, payouts from freelance platforms or payment processors (e.g. Stripe, PayPal), overdue-payment reminders"
+    },
+    {
+      "name": "Tools & Subscriptions",
+      "criteria": "Transactional messages about the user's own software accounts: receipts, renewals, plan changes, usage limits and billing problems for hosting, domains and SaaS tools. Not newsletters or product announcements."
+    },
+    {
+      "name": "Servers & Monitoring",
+      "criteria": "Automated technical alerts: uptime monitors, CI/CD build results, error trackers, server and backup reports, domain or SSL certificate expiry warnings"
+    },
+    {
+      "name": "Security",
+      "criteria": "2FA/OTP codes, password resets, new sign-in alerts, account verification, leaked secret or security incident alerts, suspicious activity"
+    },
+    {
+      "name": "Tax & Admin",
+      "criteria": "Accountant, tax office, business registration, insurance, contracts and other paperwork for the user's business"
+    },
+    {
+      "name": "Newsletters & Promotions",
+      "criteria": "Bulk mail from ANY company or person: newsletters, digests, product updates and \"what's new\" announcements, discounts, webinar and conference marketing, job-board newsletters"
+    },
+    {
+      "name": "Social",
+      "criteria": "Social networks and communities: LinkedIn (including job alerts), X/Twitter, GitHub discussions and mentions, forum replies, Discord or Slack email notifications"
+    },
+    {
+      "name": "Personal",
+      "criteria": "Friends and family, personal purchases and deliveries, travel, appointments and anything private that is not about work"
+    },
+    {
+      "name": "Other",
+      "criteria": "Emails that do not clearly fit any other category"
+    }
+  ]
+}
